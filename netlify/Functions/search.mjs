@@ -22,9 +22,10 @@ export default async (req) => {
   const q = (new URL(req.url).searchParams.get("q") || "").trim().slice(0, 90);
   if (q.length < 2) return json({ error: "Scrivi almeno il titolo della canzone." }, 400);
 
-  const apiKey = process.env.YOUTUBE_API_KEY;
+   const apiKey = process.env.YOUTUBE_API_KEY;
   if (!apiKey) {
-    return json({ error: "Ricerca non configurata: manca la variabile YOUTUBE_API_KEY." }, 500);
+    const visibili = Object.keys(process.env).filter((k) => /YOU|KEY|API/i.test(k));
+    return json({ error: "Manca YOUTUBE_API_KEY", variabiliViste: visibili }, 500);
   }
 
   const store = getStore({ name: "karaoke" });

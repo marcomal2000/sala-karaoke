@@ -1,6 +1,5 @@
 import { getStore } from "@netlify/blobs";
 
-export const config = { path: "/api/room" };
 
 /* ---------- utilità ---------- */
 const store = () => getStore({ name: "karaoke", consistency: "strong" });

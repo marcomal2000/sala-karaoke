@@ -1,3 +1,468 @@
-package.json
-netlify/functions/room.mjs
-netlify/functions/search.mjs
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sala Karaoke</title>
+<meta name="theme-color" content="#1B1230">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{
+  --stage:#1B1230; --stage-2:#2A1B47; --stage-3:#3A2660;
+  --fill:#FF3D7F; --gold:#FFC857; --ink:#F6F0FF; --ink-dim:#B4A6D0;
+  --line:rgba(246,240,255,.14);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--stage);color:var(--ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+h1,h2,h3{margin:0;font-weight:400}
+.display{font-family:Anton,Impact,"Arial Narrow Bold",sans-serif;text-transform:uppercase;letter-spacing:.01em;line-height:.95;font-weight:400}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input{font:inherit}
+a{color:var(--gold)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:24px 20px 64px}
+.wrap.narrow{max-width:600px}
+.hidden{display:none !important}
+
+.gate{min-height:100vh;display:flex;flex-direction:column;justify-content:center;gap:28px;max-width:520px;margin:0 auto;padding:32px 20px}
+.gate-title{font-size:clamp(52px,15vw,92px)}
+.gate-title .lit{color:var(--fill)}
+.gate p{color:var(--ink-dim);margin:0}
+.choice{display:block;width:100%;text-align:left;padding:18px 20px;background:var(--stage-2);border:1px solid var(--line);border-radius:14px}
+.choice:hover{background:var(--stage-3)}
+.choice b{display:block;font-size:17px;font-weight:600;margin-bottom:2px}
+.choice span{color:var(--ink-dim);font-size:14px}
+.choice+.choice{margin-top:12px}
+
+.topbar{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:28px;flex-wrap:wrap}
+.topbar h2{font-size:22px}
+.roomcode{font-family:Anton,Impact,sans-serif;font-size:28px;letter-spacing:.14em;color:var(--gold)}
+.muted{color:var(--ink-dim);font-size:14px}
+.field{width:100%;padding:13px 15px;background:rgba(0,0,0,.28);border:1px solid var(--line);border-radius:11px;color:var(--ink)}
+.field::placeholder{color:#7d6fa0}
+.field:focus{outline:none;border-color:var(--fill)}
+label.lab{display:block;font-size:13px;color:var(--ink-dim);margin:0 0 6px}
+.btn{background:var(--fill);color:#1B1230;font-weight:600;padding:13px 22px;border-radius:11px}
+.btn:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+.btn-ghost{border:1px solid var(--line);padding:11px 18px;border-radius:11px;color:var(--ink)}
+.btn-ghost:hover{background:var(--stage-2)}
+.row{display:flex;gap:10px;align-items:center}
+
+.stage-now{background:linear-gradient(180deg,var(--stage-2),rgba(42,27,71,0));border-top:2px solid var(--fill);border-radius:4px 4px 0 0;padding:22px 22px 26px;margin-bottom:32px}
+.now-kicker{font-size:13px;color:var(--gold);margin-bottom:10px}
+.lyric{font-family:Anton,Impact,sans-serif;text-transform:uppercase;line-height:1.02;font-size:clamp(30px,6vw,58px);
+  background:linear-gradient(90deg,var(--fill) 0 var(--sung,0%),rgba(246,240,255,.30) var(--sung,0%) 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;word-break:break-word}
+.now-meta{margin-top:12px;color:var(--ink-dim);font-size:15px}
+.now-meta b{color:var(--ink);font-weight:600}
+.now-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;align-items:center}
+.embed{margin-top:18px;aspect-ratio:16/9;width:100%;background:#000;border-radius:10px;overflow:hidden}
+.embed iframe{width:100%;height:100%;border:0;display:block}
+.toggle{display:flex;align-items:center;gap:7px;font-size:14px;color:var(--ink-dim)}
+
+.cols{display:grid;grid-template-columns:1fr 300px;gap:36px;align-items:start}
+@media(max-width:820px){.cols{grid-template-columns:1fr;gap:32px}}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.sec-head h3{font-size:15px;font-weight:600}
+ol.queue{list-style:none;margin:0;padding:0}
+li.item{display:grid;grid-template-columns:34px 64px 1fr auto;gap:12px;align-items:center;padding:11px 10px;border-radius:11px;border:1px solid transparent}
+li.item+li.item{border-top:1px solid var(--line)}
+li.item:hover{background:var(--stage-2);border-color:var(--line)}
+.pos{font-family:Anton,Impact,sans-serif;font-size:20px;color:var(--ink-dim);text-align:center}
+li.item:first-child .pos{color:var(--gold)}
+.thumb{width:64px;height:36px;object-fit:cover;border-radius:5px;background:var(--stage-3);display:block}
+.it-title{font-size:15px;font-weight:500;line-height:1.3;display:block}
+.it-sub{font-size:13px;color:var(--ink-dim);margin-top:2px;display:block}
+.it-sub .who{color:var(--gold)}
+.it-actions{display:flex;gap:4px;opacity:.6}
+li.item:hover .it-actions{opacity:1}
+.icon{width:34px;height:34px;border-radius:8px;font-size:15px;line-height:1;color:var(--ink-dim)}
+.icon:hover{background:var(--stage-3);color:var(--ink)}
+.empty{padding:26px 14px;color:var(--ink-dim);font-size:15px;border:1px dashed var(--line);border-radius:12px}
+
+.qrpanel{background:var(--stage-2);border:1px solid var(--line);border-radius:14px;padding:20px}
+.qrbox{background:#fff;padding:12px;border-radius:10px;display:flex;justify-content:center;margin:14px 0}
+.qrbox img,.qrbox canvas{display:block;width:100%;height:auto;max-width:220px}
+.qrpanel .roomcode{font-size:40px;display:block;text-align:center;letter-spacing:.18em;margin:2px 0 4px}
+
+.results{display:flex;flex-direction:column;gap:8px;margin-top:18px}
+.result{display:grid;grid-template-columns:96px 1fr;gap:12px;align-items:center;text-align:left;width:100%;padding:9px;border-radius:12px;border:1px solid var(--line);background:var(--stage-2)}
+.result:hover,.result:focus-visible{border-color:var(--fill);background:var(--stage-3)}
+.result img{width:96px;height:54px;object-fit:cover;border-radius:6px;background:var(--stage-3)}
+.r-title{font-size:15px;font-weight:500;line-height:1.3;display:block}
+.r-sub{font-size:13px;color:var(--ink-dim);margin-top:3px;display:block}
+.status{margin-top:16px;color:var(--ink-dim);font-size:14px;min-height:20px}
+.status.err{color:var(--gold)}
+.dots::after{content:'';animation:dots 1.2s steps(4,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media(prefers-reduced-motion:reduce){.dots::after{animation:none;content:'...'}}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--fill);color:#1B1230;font-weight:600;padding:12px 20px;border-radius:11px;z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:90vw}
+.mine{margin-top:26px;padding-top:18px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+
+<!-- ENTRATA -->
+<section id="gate" class="gate">
+  <div>
+    <h1 class="display gate-title">Sala<br>Kara<span class="lit">oke</span></h1>
+    <p style="margin-top:14px">Una coda condivisa. Gli ospiti inquadrano il QR e scelgono la canzone, la regia la manda in onda.</p>
+  </div>
+  <div>
+    <button class="choice" id="goManager"><b>Apri la serata</b><span>Crei la stanza, mostri il QR, lanci i video</span></button>
+    <button class="choice" id="goGuest"><b>Metti una canzone in coda</b><span>Hai il codice della stanza e vuoi cantare</span></button>
+  </div>
+  <p class="muted">Chiunque abbia il codice vede la coda con i nomi e i brani scelti.</p>
+</section>
+
+<!-- REGIA -->
+<section id="managerView" class="wrap hidden">
+  <div class="topbar">
+    <h2 class="display">Regia</h2>
+    <div class="row"><span class="muted" id="syncInfo">—</span><button class="btn-ghost" id="leaveManager">Esci</button></div>
+  </div>
+
+  <div class="stage-now">
+    <div class="now-kicker">Ora in scena</div>
+    <div class="lyric" id="nowTitle">nessuna canzone in scena</div>
+    <div class="now-meta" id="nowMeta"></div>
+    <div class="now-actions">
+      <button class="btn" id="playNext">Manda in onda il primo</button>
+      <button class="btn-ghost hidden" id="reopenBtn">Riapri su YouTube</button>
+      <button class="btn-ghost hidden" id="finishBtn">Fine brano</button>
+      <label class="toggle"><input type="checkbox" id="embedToggle"> Riproduci qui dentro</label>
+    </div>
+    <div class="embed hidden" id="embedBox"></div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="sec-head"><h3>In coda</h3><span class="muted" id="queueCount"></span></div>
+      <ol class="queue" id="mQueue"></ol>
+      <div class="sec-head" style="margin-top:34px"><h3>Già cantate</h3><button class="btn-ghost" id="clearDone" style="padding:6px 12px;font-size:13px">Svuota</button></div>
+      <ol class="queue" id="mDone"></ol>
+    </div>
+    <aside class="qrpanel">
+      <h3 style="font-size:15px;font-weight:600">Fai entrare gli ospiti</h3>
+      <span class="roomcode" id="mCode">····</span>
+      <p class="muted" style="text-align:center;margin:0">codice stanza</p>
+      <div class="qrbox" id="qrbox"></div>
+      <p class="muted" id="qrLink" style="word-break:break-all"></p>
+      <p class="muted" style="margin-top:10px">Chi inquadra il QR entra già con il codice compilato: deve solo scrivere il nome.</p>
+    </aside>
+  </div>
+</section>
+
+<!-- OSPITE -->
+<section id="guestView" class="wrap narrow hidden">
+  <div id="joinStep">
+    <h2 class="display" style="font-size:40px;margin-bottom:8px">Chi canta?</h2>
+    <p class="muted" style="margin:0 0 22px">Due cose e sei in coda.</p>
+    <label class="lab" for="guestName">Il tuo nome</label>
+    <input class="field" id="guestName" placeholder="Marco" autocomplete="given-name">
+    <label class="lab" for="joinCode" style="margin-top:16px">Codice della stanza</label>
+    <input class="field" id="joinCode" placeholder="ABCD" maxlength="4" autocapitalize="characters" autocomplete="off" style="text-transform:uppercase;letter-spacing:.25em;font-size:20px">
+    <button class="btn" id="joinBtn" style="margin-top:18px;width:100%">Entra nella stanza</button>
+    <div class="status" id="joinStatus"></div>
+  </div>
+
+  <div id="searchStep" class="hidden">
+    <div class="topbar">
+      <h2 class="display" style="font-size:26px" id="guestHello">Ciao</h2>
+      <div class="row"><span class="roomcode" id="gCode" style="font-size:20px"></span><button class="btn-ghost" id="leaveGuest" style="padding:7px 13px;font-size:14px">Esci</button></div>
+    </div>
+    <label class="lab" for="q">Cerca il karaoke che vuoi cantare</label>
+    <div class="row">
+      <input class="field" id="q" placeholder="es. Vasco Rossi Albachiara" enterkeyhint="search">
+      <button class="btn" id="searchBtn">Cerca</button>
+    </div>
+    <p class="muted" style="margin-top:8px">Scrivi titolo e artista, poi scegli la versione giusta.</p>
+    <div class="results" id="results"></div>
+    <div class="status" id="searchStatus"></div>
+
+    <details style="margin-top:22px">
+      <summary class="muted" style="cursor:pointer">Ho già il link YouTube</summary>
+      <div class="row" style="margin-top:10px">
+        <input class="field" id="urlInput" placeholder="https://www.youtube.com/watch?v=...">
+        <button class="btn-ghost" id="urlBtn">Aggiungi</button>
+      </div>
+    </details>
+
+    <div class="mine">
+      <div class="sec-head"><h3>La coda</h3><span class="muted" id="gCount"></span></div>
+      <ol class="queue" id="gQueue"></ol>
+    </div>
+  </div>
+</section>
+
+<script>
+const POLL_MS = 4000;
+let room = null, roomCode = null, role = null, myName = '', hostToken = null, pollTimer = null, embedOn = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const thumbUrl = v => `https://i.ytimg.com/vi/${v}/mqdefault.jpg`;
+const watchUrl = v => `https://www.youtube.com/watch?v=${v}`;
+const store = { get: k => { try{ return localStorage.getItem('kara:'+k); }catch(e){ return null; } },
+                set: (k,v) => { try{ localStorage.setItem('kara:'+k, v); }catch(e){} },
+                del: k => { try{ localStorage.removeItem('kara:'+k); }catch(e){} } };
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className='toast'; t.textContent=msg; t.setAttribute('role','status');
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 2800);
+}
+
+/* ---------- chiamate al server ---------- */
+async function post(action, extra={}){
+  const res = await fetch('/.netlify/functions/room', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action, code: roomCode, host: hostToken, ...extra })
+  });
+  const data = await res.json().catch(()=>({error:'Risposta non leggibile.'}));
+  if(!res.ok) throw new Error(data.error || 'Errore di rete');
+  if(data.room){ room = data.room; render(); }
+  return data;
+}
+async function fetchRoom(code, since){
+  const res = await fetch(`/.netlify/functions/room?code=${encodeURIComponent(code)}${since ? '&since='+since : ''}`);
+  if(res.status === 404) return null;
+  const data = await res.json();
+  if(data.unchanged) return room;
+  return data.room || null;
+}
+
+function startPolling(){
+  stopPolling();
+  pollTimer = setInterval(async () => {
+    try{
+      const fresh = await fetchRoom(roomCode, room?.updated);
+      if(fresh && fresh.updated !== room?.updated){ room = fresh; render(); }
+      if($('syncInfo')) $('syncInfo').textContent = 'aggiornato ' + new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    }catch(e){ if($('syncInfo')) $('syncInfo').textContent = 'connessione persa'; }
+  }, POLL_MS);
+}
+function stopPolling(){ if(pollTimer) clearInterval(pollTimer); pollTimer = null; }
+document.addEventListener('visibilitychange', () => { if(roomCode){ document.hidden ? stopPolling() : startPolling(); } });
+
+/* ---------- entrata ---------- */
+$('goManager').onclick = async () => {
+  const savedCode = store.get('hostCode'), savedTok = store.get('hostToken');
+  if(savedCode && savedTok){
+    const existing = await fetchRoom(savedCode);
+    if(existing){ room = existing; roomCode = savedCode; hostToken = savedTok; role='manager'; return showManager(); }
+  }
+  try{
+    const res = await fetch('/.netlify/functions/room', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'create'})});
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error);
+    room = data.room; roomCode = data.room.code; hostToken = data.host; role='manager';
+    store.set('hostCode', roomCode); store.set('hostToken', hostToken);
+    showManager();
+  }catch(e){ alert('Non riesco ad aprire la stanza: ' + e.message); }
+};
+
+$('goGuest').onclick = () => {
+  role = 'guest';
+  $('gate').classList.add('hidden');
+  $('guestView').classList.remove('hidden');
+  const n = store.get('name'); if(n) $('guestName').value = n;
+  const c = (location.hash.replace('#','').toUpperCase().match(/^[A-Z]{4}$/) || [])[0] || store.get('lastCode');
+  if(c) $('joinCode').value = c;
+  $('guestName').focus();
+};
+
+// Chi arriva dal QR (link con #CODICE) va dritto al modulo ospite
+if(/^#[A-Za-z]{4}$/.test(location.hash)) window.addEventListener('DOMContentLoaded', () => $('goGuest').click());
+
+/* ---------- regia ---------- */
+function showManager(){
+  $('gate').classList.add('hidden');
+  $('managerView').classList.remove('hidden');
+  $('mCode').textContent = roomCode;
+  drawQR();
+  render();
+  startPolling();
+}
+function drawQR(){
+  const link = location.origin + location.pathname + '#' + roomCode;
+  $('qrLink').textContent = link;
+  const box = $('qrbox'); box.innerHTML = '';
+  if(typeof QRCode === 'undefined'){ box.innerHTML = '<p style="color:#555;font-size:13px;margin:0;padding:18px;text-align:center">QR non disponibile: usa il link qui sotto</p>'; return; }
+  new QRCode(box, { text: link, width:220, height:220, colorDark:'#1B1230', colorLight:'#ffffff', correctLevel: QRCode.CorrectLevel.M });
+}
+$('leaveManager').onclick = () => { if(confirm('Chiudi la regia su questo dispositivo? La stanza resta attiva.')) location.reload(); };
+$('leaveGuest').onclick = () => location.reload();
+
+$('playNext').onclick = async () => { try{ await post('play'); openVideo(room.playing); }catch(e){ toast(e.message); } };
+$('reopenBtn').onclick = () => openVideo(room?.playing);
+$('finishBtn').onclick = async () => { try{ await post('finish'); setEmbed(null); }catch(e){ toast(e.message); } };
+$('clearDone').onclick = async () => { try{ await post('clearDone'); }catch(e){ toast(e.message); } };
+$('embedToggle').onchange = e => { embedOn = e.target.checked; setEmbed(embedOn && room?.playing ? room.playing : null); };
+
+function openVideo(item){
+  if(!item) return;
+  if(embedOn) return setEmbed(item);
+  window.open(watchUrl(item.videoId), '_blank', 'noopener');
+}
+function setEmbed(item){
+  const box = $('embedBox');
+  if(!item || !embedOn){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(item.videoId)}?autoplay=1&rel=0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="${esc(item.title)}"></iframe>`;
+}
+
+/* ---------- ospite ---------- */
+$('joinBtn').onclick = doJoin;
+$('joinCode').addEventListener('keydown', e => { if(e.key === 'Enter') doJoin(); });
+$('guestName').addEventListener('keydown', e => { if(e.key === 'Enter') $('joinCode').focus(); });
+
+async function doJoin(){
+  const name = $('guestName').value.trim();
+  const code = $('joinCode').value.trim().toUpperCase();
+  const st = $('joinStatus');
+  if(!name){ st.className='status err'; st.textContent='Scrivi il tuo nome: serve a chiamarti al microfono.'; return; }
+  if(!/^[A-Z]{4}$/.test(code)){ st.className='status err'; st.textContent='Il codice è di 4 lettere, lo trovi sullo schermo della regia.'; return; }
+  st.className='status'; st.innerHTML='<span class="dots">Cerco la stanza</span>';
+  let found;
+  try{ found = await fetchRoom(code); }
+  catch(e){ st.className='status err'; st.textContent='Il server non risponde. Riprova.'; return; }
+  if(!found){ st.className='status err'; st.textContent=`Nessuna stanza con il codice ${code}.`; return; }
+  room = found; roomCode = code; myName = name;
+  store.set('name', name); store.set('lastCode', code);
+  $('joinStep').classList.add('hidden');
+  $('searchStep').classList.remove('hidden');
+  $('guestHello').textContent = 'Ciao ' + name;
+  $('gCode').textContent = code;
+  $('q').focus();
+  render(); startPolling();
+}
+
+$('searchBtn').onclick = doSearch;
+$('q').addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
+
+async function doSearch(){
+  const q = $('q').value.trim(), st = $('searchStatus');
+  if(q.length < 2){ st.className='status err'; st.textContent='Scrivi almeno il titolo della canzone.'; return; }
+  $('results').innerHTML=''; st.className='status'; st.innerHTML='<span class="dots">Cerco su YouTube</span>';
+  $('searchBtn').disabled = true;
+  try{
+    const res = await fetch('/.netlify/functions/search?q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || 'Ricerca non riuscita');
+    if(!data.results?.length) throw new Error('Nessun risultato. Prova con titolo e artista.');
+    renderResults(data.results);
+    st.textContent = 'Tocca la versione che vuoi cantare.';
+  }catch(e){
+    st.className='status err'; st.textContent = e.message;
+  }finally{ $('searchBtn').disabled = false; }
+}
+
+function renderResults(list){
+  $('results').innerHTML = list.map((x,i) => `
+    <button class="result" data-i="${i}">
+      <img src="${esc(x.thumb || thumbUrl(x.videoId))}" alt="" loading="lazy">
+      <span><span class="r-title">${esc(x.title)}</span><span class="r-sub">${esc(x.channel || '')}</span></span>
+    </button>`).join('');
+  [...$('results').querySelectorAll('.result')].forEach(b => b.onclick = () => queueSong(list[+b.dataset.i]));
+}
+
+async function queueSong(song){
+  const st = $('searchStatus');
+  try{
+    await post('add', { singer: myName, title: song.title, artist: song.artist || '', channel: song.channel || '', videoId: song.videoId });
+    toast(song.title.slice(0,60) + ' in coda');
+    $('results').innerHTML=''; $('q').value='';
+    st.className='status'; st.textContent='Aggiunta. Cercane un\u2019altra quando vuoi.';
+  }catch(e){ st.className='status err'; st.textContent = e.message; }
+}
+
+$('urlBtn').onclick = async () => {
+  const m = String($('urlInput').value.trim()).match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})|^([\w-]{11})$/);
+  const v = m ? (m[1] || m[2]) : null;
+  const st = $('searchStatus');
+  if(!v){ st.className='status err'; st.textContent='Quel link non contiene un video YouTube.'; return; }
+  st.className='status'; st.innerHTML='<span class="dots">Leggo il video</span>';
+  let title = 'Video YouTube', channel = '';
+  try{
+    const r = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl(v))}&format=json`);
+    if(r.ok){ const j = await r.json(); title = j.title || title; channel = j.author_name || ''; }
+  }catch(e){}
+  await queueSong({ title, channel, videoId: v });
+  $('urlInput').value = '';
+};
+
+/* ---------- render ---------- */
+function render(){ if(!room) return; role === 'manager' ? renderManager() : renderGuest(); }
+
+function renderManager(){
+  const p = room.playing;
+  $('nowTitle').textContent = p ? p.title : 'nessuna canzone in scena';
+  $('nowTitle').style.setProperty('--sung', p ? '100%' : '0%');
+  $('nowMeta').innerHTML = p
+    ? `al microfono <b>${esc(p.singer)}</b>${p.channel ? ' · ' + esc(p.channel) : ''}`
+    : (room.queue.length ? 'Il primo della coda è pronto.' : 'Coda vuota: mostra il QR e fai scegliere.');
+  $('reopenBtn').classList.toggle('hidden', !p);
+  $('finishBtn').classList.toggle('hidden', !p);
+  $('playNext').disabled = !room.queue.length;
+  $('playNext').textContent = p ? 'Passa al prossimo' : 'Manda in onda il primo';
+  $('queueCount').textContent = room.queue.length ? room.queue.length + ' brani' : '';
+
+  $('mQueue').innerHTML = room.queue.length ? room.queue.map((x,i) => `
+    <li class="item">
+      <span class="pos">${i+1}</span>
+      <img class="thumb" src="${thumbUrl(x.videoId)}" alt="" loading="lazy">
+      <span><span class="it-title">${esc(x.title)}</span><span class="it-sub"><span class="who">${esc(x.singer)}</span></span></span>
+      <span class="it-actions">
+        <button class="icon" data-act="move" data-dir="up" data-id="${x.id}" aria-label="Sposta su">↑</button>
+        <button class="icon" data-act="play" data-id="${x.id}" aria-label="Manda in onda">▶</button>
+        <button class="icon" data-act="remove" data-id="${x.id}" aria-label="Togli">✕</button>
+      </span>
+    </li>`).join('') : '<div class="empty">Nessuno in coda. Il QR qui accanto è il modo per riempirla.</div>';
+
+  $('mDone').innerHTML = room.done.length ? room.done.slice(0,12).map(x => `
+    <li class="item" style="opacity:.55">
+      <span class="pos">·</span>
+      <img class="thumb" src="${thumbUrl(x.videoId)}" alt="" loading="lazy">
+      <span><span class="it-title">${esc(x.title)}</span><span class="it-sub"><span class="who">${esc(x.singer)}</span></span></span>
+      <span class="it-actions"><button class="icon" data-act="requeue" data-id="${x.id}" aria-label="Rimetti in coda">↺</button></span>
+    </li>`).join('') : '<div class="empty">Ancora niente.</div>';
+
+  document.querySelectorAll('#mQueue [data-act], #mDone [data-act]').forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    try{
+      await post(b.dataset.act, { id: b.dataset.id, dir: b.dataset.dir });
+      if(b.dataset.act === 'play') openVideo(room.playing);
+    }catch(e){ toast(e.message); b.disabled = false; }
+  });
+}
+
+function renderGuest(){
+  const q = room.queue || [];
+  $('gCount').textContent = q.length ? q.length + ' in attesa' : '';
+  const now = room.playing ? `
+    <li class="item" style="border:1px solid var(--fill)">
+      <span class="pos" style="color:var(--fill)">♪</span>
+      <img class="thumb" src="${thumbUrl(room.playing.videoId)}" alt="" loading="lazy">
+      <span><span class="it-title">${esc(room.playing.title)}</span><span class="it-sub">ora canta <span class="who">${esc(room.playing.singer)}</span></span></span><span></span>
+    </li>` : '';
+  const rest = q.map((x,i) => `
+    <li class="item"${x.singer === myName ? ' style="background:var(--stage-2)"' : ''}>
+      <span class="pos">${i+1}</span>
+      <img class="thumb" src="${thumbUrl(x.videoId)}" alt="" loading="lazy">
+      <span><span class="it-title">${esc(x.title)}</span><span class="it-sub"><span class="who">${esc(x.singer)}</span></span></span>
+      <span class="it-actions">${x.singer === myName ? `<button class="icon" data-gdel="${x.id}" aria-label="Togli">✕</button>` : ''}</span>
+    </li>`).join('');
+  $('gQueue').innerHTML = (now + rest) || '<div class="empty">Coda vuota. La prima canzone della serata è tua.</div>';
+  document.querySelectorAll('[data-gdel]').forEach(b => b.onclick = async () => {
+    try{ await post('remove', { id: b.dataset.gdel, singer: myName }); }catch(e){ toast(e.message); }
+  });
+}
+</script>
+</body>
+</html>

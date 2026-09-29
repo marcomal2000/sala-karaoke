@@ -1,6 +1,5 @@
 import { getStore } from "@netlify/blobs";
 
-export const config = { path: "/api/search" };
 
 const CACHE_DAYS = 30;
 

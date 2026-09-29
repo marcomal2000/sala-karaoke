@@ -1,0 +1,8 @@
+{
+  "name": "sala-karaoke",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "^11.0.2"
+  }
+}
